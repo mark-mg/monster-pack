@@ -241,7 +241,7 @@
             </div>
             <div id="DNW-2a" class="col medium-6 small-6 large-6" style="padding-left: 0px;padding-bottom: 0px;text-align: left;">
                 <ol>
-                    <li>Reccomend System Size</li>
+                    <li>Recommend System Size</li>
                     <li>Provide Estimated Savings</li>
                     <li>Provide 3 Solar Quotes</li>
                     <li>Compare Feed In Tariffs</li>

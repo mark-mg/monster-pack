@@ -55,13 +55,12 @@ class Monster_Pack_Public
     private $pdf_url; 
     private $auth; 
     private $headers; 
-   
-
+    public $service_url;  
     
 
     public function __construct($plugin_name, $version)
     {
-        
+         
         $this->plugin_name = $plugin_name;
         $this->version = $version;
         
@@ -74,18 +73,26 @@ class Monster_Pack_Public
         
         
         if($_SERVER["HTTP_HOST"] == 'localhost'){
-           $this->api_url = "http://localhost/electricitymonster/services/webservices.php";
-           $this->pdf_url = "http://localhost/electricitymonster/documents/order_forms/";           
+
+           $this->service_url = 'http://localhost/electricitymonster/';  
+           $this->api_url = "http://localhost/electricitymonster/services/webservices.php";  
+           $this->pdf_url = "http://localhost/electricitymonster/documents/order_forms/";   
+
         }else{
             if(count($_POST) && isset($_POST['source'])) {
                 mail('anvesh@monstergroup.com.au, augusto@monstergroup.com.au, mark.anthony@monstergroup.com.au', 'Data Posted to SM', print_r($_POST, true));
-            }  
+            }    
+           
+            $this->service_url = 'https://mga.electricitymonster.com.au/'; //----> PRD
+
             //$this->api_url = "https://staging.electricitymonster.com.au/services/webservices.php"; //----> STG
             $this->api_url = "https://mga.electricitymonster.com.au/services/webservices.php";   //----> PRD
 
             //$this->pdf_url = "https://staging.electricitymonster.com.au/documents/order_forms/"; //----> STG
             $this->pdf_url = "https://mga.electricitymonster.com.au/documents/order_forms/";   //----> PRD
         }  
+
+         
 
         add_shortcode('cta_form',       array($this, 'cta_form'));
         add_shortcode('hero_form',      array($this, 'hero_form'));
@@ -117,11 +124,26 @@ class Monster_Pack_Public
 
         add_action("wp_ajax_CheckUserSignOff", array($this, "CheckUserSignOff"));
         add_action("wp_ajax_nopriv_CheckUserSignOff", array($this, "CheckUserSignOff"));  
+
+        add_action("wp_ajax_CheckLeadInfo", array($this, "CheckLeadInfo"));
+        add_action("wp_ajax_nopriv_CheckLeadInfo", array($this, "CheckLeadInfo"));  
+        
+        add_action("wp_ajax_RecordClicks", array($this, "RecordClicks"));
+        add_action("wp_ajax_nopriv_RecordClicks", array($this, "RecordClicks")); 
+
+        add_action("wp_ajax_SMQuoteStep2", array($this,"SMQuoteStep2"));
+        add_action("wp_ajax_nopriv_SMQuoteStep2", array($this,"SMQuoteStep2"));
+    }
+
+    public function get_service() {
+        return $this->service_url;
     }
 
     public function wpd_catalogueitem_rewrites()
 	{
-		add_rewrite_rule('order-signoff/([a-zA-Z0-9-=]+)', 'index.php?pagename=order-signoff&leadID=$matches[1]', 'top');
+        add_rewrite_rule('order-signoff/([a-zA-Z0-9-=]+)', 'index.php?pagename=order-signoff&leadID=$matches[1]', 'top');
+        add_rewrite_rule('solar-promo/([a-zA-Z0-9-=%]+)', 'index.php?pagename=solar-promo&leadID=$matches[1]', 'top');
+        add_rewrite_rule('solar-campaign/([a-zA-Z0-9-=]+)', 'index.php?pagename=solar-campaign&leadID=$matches[1]', 'top');
 	}
 	
 
@@ -138,12 +160,12 @@ class Monster_Pack_Public
 
     public function monster_pack_ajax_load_request()
     {
-        wp_localize_script($this->plugin_name, 'monster_pack_ajax_script', array('ajaxurl' => admin_url('admin-ajax.php')));
+        wp_localize_script($this->plugin_name, 'monster_pack_ajax_script', array('ajaxurl' => admin_url('admin-ajax.php')));        
     }
 
     public function load_resources()
     {
-        /* 
+        /*
         wp_register_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/monster-pack-public.css', array(), $this->version, 'all');
         wp_enqueue_style($this->plugin_name);
 
@@ -159,13 +181,13 @@ class Monster_Pack_Public
         wp_register_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/monster-pack-public.js', array('jquery'), $this->version, true);
         wp_enqueue_script($this->plugin_name);  
         */
-        
+       
         wp_register_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/mp-plugin-styles.min.css', array(), $this->version, 'all');
         wp_enqueue_style($this->plugin_name);
 
         wp_register_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/mp-plugin-scripts.min.js', array('jquery'), $this->version, true);
         wp_enqueue_script($this->plugin_name); 
-
+        
         if(is_page('order-signoff')){
             wp_register_script('jSignature', plugin_dir_url(__FILE__) . 'js/jSignature.min.noconflict.js', array('jquery'), $this->version, true);
             wp_enqueue_script('jSignature');
@@ -557,10 +579,11 @@ class Monster_Pack_Public
         $everything_is_ok = true;
         $error_msg = '';
         $curl_error_msg = '';
+        $test = 0;
 
         $table_name = $wpdb->prefix . 'lead_data';
         $q1 = $wpdb->get_var("SHOW TABLES LIKE '$table_name'");
-        if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+        if ($q1 != $table_name) {
             $charset_collate = $wpdb->get_charset_collate();
 
             $sql = "CREATE TABLE $table_name (
@@ -581,14 +604,17 @@ class Monster_Pack_Public
                 section_src  text NOT NULL,
                 page_src  text NOT NULL,
                 advertising text DEFAULT NULL, 
+                wf_email text DEFAULT NULL, 
                 lead_source text DEFAULT NULL, 
+                refresh_source text DEFAULT NULL, 
+                promo_code text DEFAULT NULL, 
 				booking_id int(11) DEFAULT NULL,
                 em_ref_id int(11) DEFAULT NULL,
                 power_company  text DEFAULT NULL,
                 shifting_date datetime DEFAULT NULL,
 				date_added datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			  	UNIQUE KEY (id)
-            ) $charset_collate;";
+            ) $charset_collate;";  
 
             $q2 = $wpdb->query($sql);
         }
@@ -598,16 +624,36 @@ class Monster_Pack_Public
             $prepend = trim($_POST['prepend']);
         }
 
+        $refresh_source = "";
+        if (isset($_POST['refresh_source']) && $_POST['refresh_source'] != "") {
+            $refresh_source = trim($_POST['refresh_source']);
+        } 
+
         $service_req = "";
         if (isset($_POST['service_req'])) {
             $service_req = $_POST['service_req'];
+        } 
+        
+        $promo = "";
+        if (isset($_POST[$prepend . '_code'])) {
+            $promo = ucwords(strtolower($_POST[$prepend . '_code']));
+        }
+
+        $sm_lead = "";
+        if (isset($_POST[$prepend . '_local'])) {
+            $sm_lead = $_POST[$prepend . '_local'];
+        }
+
+        $em_lead = "";
+        if (isset($_POST[$prepend . '_leadID'])) {
+            $em_lead = $_POST[$prepend . '_leadID'];
         }
 
         $fname = ucwords(strtolower($_POST[$prepend . '_firstname']));
         $lname = "";
         if (isset($_POST[$prepend . '_lastname'])) {
             $lname = ucwords(strtolower($_POST[$prepend . '_lastname']));
-        }
+        } 
 
         $phone_num = "";
         if (isset($_POST[$prepend . '_contact'])) {
@@ -630,14 +676,18 @@ class Monster_Pack_Public
         } else {
             $page_src = $page_src . 'homepage';
         }
-
+        
+        $wf_email = "";
+        if (isset($_POST[$prepend . '_wf_email']))  $wf_email   =   $_POST[$prepend . '_wf_email'];  
 
         $booking_id = "";
+        if (isset($_POST['book_appt_id']))  $booking_id     =   $_POST['book_appt_id']; 
+
         $booking_date = "";
-        $booking_time = ""; 
-        if (isset($_POST['book_appt_id']))  $booking_id = $_POST['book_appt_id']; 
-        if (isset($_POST['booking_date']))  $booking_date = $_POST['booking_date']; 
-        if (isset($_POST['booking_time']))  $booking_time = $_POST['booking_time'];  
+        if (isset($_POST['booking_date']))  $booking_date   =   $_POST['booking_date']; 
+
+        $booking_time = "";  
+        if (isset($_POST['booking_time']))  $booking_time   =   $_POST['booking_time'];  
         
         $quarter_bill = "";
         if (isset($_POST[$prepend . '_quarter_bill']))  $quarter_bill = strtolower($_POST[$prepend . '_quarter_bill']);  
@@ -648,56 +698,93 @@ class Monster_Pack_Public
         }
         $advertising = ($advertising == "organic" ? "Organic" : ($advertising == 'direct' ? 'DIRECT' : $advertising));
 
-
-        $cnfm_details = array(
-            'service_req'   =>  $service_req,
-            'fname'         =>  $fname,
-            'lname'         =>  $lname,
-            'email_id'      =>  $email_id,
-            'source'        =>  $source,
-            'lead_source'   =>  $source,
-            'mobile_phn'    =>  $phone_num,
-            'date_added'    =>  date('Y-m-d H:i:s'), 
-            'postcode'      =>  $postcode,
-            'advertising'   =>  $advertising,
-            'state_name'    =>  ($state_name ? $state_name : ""),
-            'section_src'   =>  $prepend,
-            'quarter_bill'   => $quarter_bill,
-            'page_src'      =>  $page_src,
-            'booking_id'    =>  $booking_id,
-        );
-
-        $wpdb->insert($table_name, $cnfm_details);
-        $lastq = $wpdb->last_query;
-        $test = $wpdb->insert_id; 
-        
-        if ($wpdb->last_error !== ''):
-            $error_msg = $wpdb->print_error();
-        endif; 
-
-        $api_msg = '';
-        $response = '';
-        $em_lead_id = '';
-        if ($test != 0) {  
-            $postdata = array(
+        if($sm_lead == ""){
+            $cnfm_details = array(
                 'service_req'   =>  $service_req,
                 'fname'         =>  $fname,
                 'lname'         =>  $lname,
                 'email_id'      =>  $email_id,
+                'source'        =>  $source,
+                'lead_source'   =>  $source,
+                'mobile_phn'    =>  $phone_num,
+                'date_added'    =>  date('Y-m-d H:i:s'), 
+                'postcode'      =>  $postcode,
+                'advertising'   =>  $advertising,
+                'state_name'    =>  ($state_name ? $state_name : ""),
+                'section_src'   =>  $prepend,
+                'quarter_bill'   => $quarter_bill,
+                'page_src'      =>  $page_src,
+                'booking_id'    =>  $booking_id,
+                'wf_email'      =>  $wf_email,
+            );
+    
+            $wpdb->insert($table_name, $cnfm_details);
+            $test = $wpdb->insert_id; 
+            $lastq = $wpdb->last_query; 
+        
+            if ($wpdb->last_error !== ''):
+                $error_msg = $wpdb->print_error();
+            endif;
+
+        }else{
+            $cnfm_details = array( 
+                'fname'         =>  $fname, 
+                'email_id'      =>  $email_id, 
+                'mobile_phn'    =>  $phone_num, 
+                'postcode'      =>  $postcode, 
+                'section_src'   =>  $prepend, 
+                'refresh_source'=>  $refresh_source,
+                'source'        =>  $source,
+                'promo_code'    =>  $promo,  
+                'wf_email'      =>  $wf_email,
+            ); 
+            
+            $result = $wpdb->update($table_name, $cnfm_details, array("id" => $sm_lead));
+
+            $test = $sm_lead;
+            $cuso_step = null;
+            $cuso_step = $wpdb->get_row( "SELECT * FROM $table_name WHERE em_ref_id = $sm_lead" ); 
+            if($cuso_step){                 
+                $service_req    =   $cuso_step->service_req; 
+                $lname          =   $cuso_step->lname;
+                $page_src       =   $cuso_step->page_src;
+                $source         =   $cuso_step->source;
+                $advertising    =   $cuso_step->advertising;
+                $quarter_bill   =   $cuso_step->quarter_bill;  
+            }
+        } 
+
+        $api_msg = '';
+        $response = '';
+        $em_lead_id = '';
+        $data = null;
+        $response_em_id = null;
+
+        if ($test != 0) {    
+            $postdata = array(
+                'action'        =>  'save_em_lead',  
+                'lead_from'     =>  'solarmonster',
+                'fname'         =>  $fname,
+                'email_id'      =>  $email_id,
                 'phone_num'     =>  $phone_num,
                 'postcode'      =>  $postcode,
-                'page_type'     =>  $page_src,
-                'source'        =>  $source,
-                'lead_source'   =>  $prepend, 
-                'lead_from'     =>  'solarmonster',
-                'advertising'   =>  $advertising,
-                'action'        =>  'save_em_lead',
-                
+
+                'refresh_source'=>  $refresh_source,
+                'redeem_code'   =>  $promo,
+                'wf_email_name' =>  $wf_email,
+
                 'sm_lead_no'    =>  $test, 
+                'lead_source'   =>  $prepend, 
+
+                'service_req'   =>  $service_req, 
+                'lname'         =>  $lname, 
+                'page_type'     =>  $page_src,
+                'source'        =>  $source, 
+                'advertising'   =>  $advertising,  
                 'appt_date'     =>  $booking_date,
                 'appt_time'     =>  $booking_time, 
                 'estimate_bill' =>  strtolower($quarter_bill),
-            ); 
+            );  
 
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $this->api_url);
@@ -724,7 +811,7 @@ class Monster_Pack_Public
                 'message' => "Some Error Occurred. Please try again.",
             );
         }  
-        
+        $everything_is_ok = true;
         if($everything_is_ok){
             header('Content-Type: application/json');
 
@@ -735,17 +822,28 @@ class Monster_Pack_Public
             setcookie("smSectionStep", $prepend, time()+86400);
 
             $return_msg = array(
-                'error'     =>  $error_msg,
-                'lastq'     =>  $lastq,
-                'source'    =>  $_POST['page_src'] . "-->" . $prepend,
-                'lead_id'   =>  $test,
-                'api_msg'   =>  $api_msg,
-                'em_lead_id'=>  $em_lead_id,
-                'booking_id'=>  $_POST['book_appt_id'],
-                'response'  =>  $response,                
+                'error'         =>  $error_msg,
+                'lastq'         =>  $lastq,
+                'source'        =>  $_POST['page_src'] . "-->" . $prepend,
+                'lead_id'       =>  $test,
+                'api_msg'       =>  $api_msg,
+                'em_lead_id'    =>  $em_lead_id,
+                'booking_id'    =>  $_POST['book_appt_id'],
+                'response'      =>  $response,    
+                'saved'         =>  1,
+                'data'          =>  $data, 
+                'step'          =>  'yes',  
+                 
                 //'headers'   =>  $this->headers,
                 //'url'       =>  $this->api_url,
             );
+
+            if(isset($response_em_id->bill_size_html))
+                $return_msg['bill_size_html'] = $response_em_id->bill_size_html;
+            if(isset($response_em_id->distrib_html))
+                $return_msg['distrib_html'] = $response_em_id->distrib_html;
+            if(isset($response_em_id->bill_size_htmls))
+                $return_msg['bill_size_htmls'] = $response_em_id->bill_size_htmls;
 
             echo json_encode( $return_msg );
         }else{
@@ -763,6 +861,7 @@ class Monster_Pack_Public
         die(0);
 
     }
+    
 
     public function SaveStep2()
     {
@@ -945,6 +1044,7 @@ class Monster_Pack_Public
             'postcode'          =>      trim($_POST[ $prepend.'_postcode']),
             'state_name'        =>      trim($_POST[ $prepend.'_state']),
             'contact_message'   =>      trim($_POST[ $prepend.'_message']),
+            
         );
         $wpdb->insert( $table_name, $cnfm_details);
         $contact_us_id = $wpdb->insert_id;
@@ -996,6 +1096,7 @@ class Monster_Pack_Public
                 $everything_is_ok = false;
                 $curl_error_msg = curl_error($ch);
             }
+            curl_close($ch);
         } else {
             $everything_is_ok = false;
             if ($wpdb->last_error !=  ''):
@@ -1130,6 +1231,7 @@ class Monster_Pack_Public
                     $everything_is_ok = false;
                     $error_msg = '[CURL]:' . curl_error($ch); 
                 } 
+                curl_close($ch);
            }  
         }else{ 
             $step = 1;
@@ -1172,6 +1274,7 @@ class Monster_Pack_Public
                 $everything_is_ok = false;
                 $error_msg = '[CURL]:'.curl_error($ch);
             } 
+            curl_close($ch);
         } 
  
 
@@ -1211,4 +1314,349 @@ class Monster_Pack_Public
         die(0); 
     } 
 
+    public function CheckLeadInfo()
+    {
+        global $wpdb; 
+        $everything_is_ok = true;
+        $error_msg = '';
+        $curl_error_msg = '';
+        $cuso_step = null;
+        $step = 0;
+        $postdata = null;
+        $response = null; 
+        $crm_data = null; 
+        
+        $name = '';
+        $contact = '';
+        $postcode = '';
+        $email = ''; 
+
+        $table_name = $wpdb->prefix . 'lead_data';
+        $local_id = "";  
+
+        $order_form_id  = "0";
+        if(isset($_POST['order_form_id']) && $_POST['order_form_id'] != "")  $order_form_id = trim($_POST['order_form_id']); 
+
+        $sub_action = "check";
+        if (isset($_POST['subs']) && $_POST['subs'] != "") $sub_action = trim($_POST['subs']); 
+
+        $wf_email = "";
+        if(isset($_POST['promo_wf_email']))  $wf_email = $_POST['promo_wf_email'];  
+
+        $q1 = $wpdb->get_var("SHOW TABLES LIKE '$table_name'");
+
+        if ($q1 != $table_name) {  
+        
+            $charset_collate = $wpdb->get_charset_collate();
+
+            $sql = "CREATE TABLE $table_name (
+				id int(11) NOT NULL  AUTO_INCREMENT,
+				fname text NOT NULL,
+				lname text NOT NULL,
+				email_id text NOT NULL,
+				mobile_phn text NOT NULL,
+                full_address text DEFAULT NULL,
+                street_name text DEFAULT NULL,
+                suburb text DEFAULT NULL,
+				postcode text DEFAULT NULL,
+                state_name text DEFAULT NULL,
+                source text DEFAULT NULL,
+                service_req text NOT NULL,
+                quarter_bill text DEFAULT NULL,
+                step2_sync tinyint(1) UNSIGNED NOT NULL DEFAULT '0',
+                section_src  text NOT NULL,
+                page_src  text NOT NULL,
+                advertising text DEFAULT NULL,  
+                lead_source text DEFAULT NULL,  
+				booking_id int(11) DEFAULT NULL,
+                em_ref_id int(11) DEFAULT NULL,
+                power_company  text DEFAULT NULL,
+                shifting_date datetime DEFAULT NULL,
+
+                wf_email text DEFAULT NULL, 
+                refresh_source text DEFAULT NULL, 
+                promo_code text DEFAULT NULL, 
+
+				date_added datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			  	UNIQUE KEY (id)
+            ) $charset_collate;";  
+
+            $q2 = $wpdb->query($sql);  
+
+        } else {
+            $cuso_step = $wpdb->get_row( "SELECT * FROM $table_name WHERE em_ref_id = $order_form_id" ); 
+        }   
+
+        if($cuso_step){
+            $step = 2;
+            $local_id   =   $cuso_step->id;
+            $name       =   $cuso_step->fname;
+            $contact    =   $cuso_step->mobile_phn;
+            $postcode   =   $cuso_step->postcode;
+            $email      =   $cuso_step->email_id; 
+
+        }else{  
+            $step = 1;
+            $postdata = array(
+                'lead_id'   =>      $order_form_id,
+                'action'    =>      "get_lead_details",
+            );
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $this->api_url);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postdata));
+
+            $crm_data = curl_exec($ch);
+            if (!curl_errno($ch)) {
+                $crm_data = json_decode($crm_data);
+                
+                if ($crm_data->dets_found==1){
+
+                    $name       =   $crm_data->fname;
+                    $contact    =   $crm_data->mobile_phn;
+                    $postcode   =   $crm_data->postcode;
+                    $email      =   $crm_data->email_id; 
+
+                     
+                    $cnfm_details = array(
+                        'em_ref_id'         =>      $order_form_id,
+                        'fname'             =>      $name,
+                        'mobile_phn'        =>      $contact,
+                        'postcode'          =>      $postcode,
+                        'wf_email'          =>      $wf_email,
+                        'email_id'          =>      $email,
+                        'source'            =>      'solar-promo',
+                    );
+
+                    $wpdb->insert($table_name, $cnfm_details);  
+
+                }else{
+                    $everything_is_ok = false;
+                    $error_msg = '[CURL]:'.curl_error($ch);
+                } 
+            } else {
+                $everything_is_ok = false;
+                $error_msg = '[CURL]:'.curl_error($ch);
+            } 
+            curl_close($ch);
+        }  
+
+        $response = array(
+            'step'      =>      $step, 
+            'lead_id'   =>      $order_form_id,
+            'local_id'  =>      $local_id,
+            'name'      =>      $name,
+            'contact'   =>      $contact,
+            'postcode'  =>      $postcode,
+            'email'     =>      $email,
+            'error'     =>      $error_msg,
+            'action'    =>      $sub_action, 
+            'crm_data'  =>      json_encode($crm_data),
+        ); 
+
+        if($everything_is_ok){ 
+            echo json_encode($response); 
+        }else{
+            header('HTTP/1.1 500 Internal Server Booboo');
+            header('Content-Type: application/json; charset=UTF-8');
+
+            if(trim($error_msg) == ""){
+                echo json_encode('Error 500: Internal Server.[' .$curl_error_msg. ']. Please try again.');  
+            } else {                
+                echo json_encode('Error 400: Bad Request.['.$error_msg.']. Please try again.'); 
+            }            
+        }   
+        die(0); 
+    }  
+    
+    public function RecordClicks()
+    {
+        global $wpdb; 
+        $everything_is_ok = true;
+        $error_msg = '';
+        $curl_error_msg = ''; 
+
+        $order_form_id  = "0";
+        if(isset($_POST['order_form_id']) && $_POST['order_form_id'] != "") {
+            $order_form_id = trim($_POST['order_form_id']); 
+        }
+
+        $wf_email = "";
+        if (isset($_POST['promo_wf_email'])) {
+            $wf_email = $_POST['promo_wf_email'];
+        }
+
+        $path_email1 = $this->service_url . "crons/track_clicks.php?lead_id=$order_form_id&email_name=$wf_email";
+        
+        $postdata = array(
+            'lead_id'       =>  $order_form_id,
+            'email_name'    =>  $wf_email,
+            'action'        =>  "record_rd_email_click",
+        );
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $this->api_url);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postdata)); 
+        $crm_data = curl_exec($ch);
+
+
+        if (curl_errno($ch)) {
+            $everything_is_ok = false;
+            $error_msg = '[CURL]:' . curl_error($ch); 
+        } 
+
+        curl_close($ch); 
+
+      
+
+        $response = array( 
+            'lead_id'       =>      $order_form_id,
+            'email_name'    =>      $wf_email,
+            'path'          =>      $path_email1, 
+            'error'         =>      $error_msg, 
+        );
+
+        if($everything_is_ok){  
+            echo json_encode($response); 
+        }else{
+            header('HTTP/1.1 500 Internal Server Booboo');
+            header('Content-Type: application/json; charset=UTF-8');
+
+            if(trim($error_msg) == ""){
+                echo json_encode('Error 500: Internal Server.[' .json_encode($response). ']. Please try again.');  
+            } else {                
+                echo json_encode('Error 400: Bad Request.['.json_encode($response).']. Please try again.'); 
+            }            
+        }   
+        die(0); 
+    } 
+    
+    public function SMQuoteStep2() {
+        global $wpdb, $site_url, $state_list, $api_url;
+        $lead_Details = null;
+        $everything_is_ok = true;
+        $error_msg ='';
+
+        $table_name = $wpdb->prefix . 'lead_data';   
+
+        $lead_id = $_POST['this_fbsm_id']; 
+
+        if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+            $error_msg = $table_name . ' is not defined.';
+            $everything_is_ok = false;
+        } else {
+            $lead_Details = $wpdb->get_row( "SELECT * FROM $table_name WHERE id = $lead_id" ); 
+        }   
+        
+        $extras = array();
+        if($lead_Details['extras'] != "") {
+            $extras = (array)json_decode($lead_Details['extras']);    
+        }  
+
+        $estimate_bill = '';
+        if(isset($_POST['campaign_step_quarter_bill'])){
+            $extras['estimate_bill'] = $_POST['campaign_step_quarter_bill'];
+            $estimate_bill = $_POST['campaign_step_quarter_bill'];
+        }
+
+        $power_company = '';
+        if(isset($_POST['campaign_step_retailer'])){
+            $power_company = $_POST['campaign_step_retailer'];  
+        }  
+
+        $address = '';
+        if(isset($_POST['campaign_step_address'])){
+            $address = $_POST['campaign_step_address'];  
+        }  
+
+        $street_name = '';
+        if(isset($_POST['campaign_step_street_name'])){
+            $street_name = $_POST['campaign_step_street_name'];  
+        }  
+
+        $suburb = '';
+        if(isset($_POST['campaign_step_suburb'])){
+            $suburb = $_POST['campaign_step_suburb'];  
+        }  
+
+        $postcode = '';
+        if(isset($_POST['campaign_step_postcode'])){
+            $postcode = $_POST['campaign_step_postcode'];  
+        }  
+
+        $state = '';
+        if(isset($_POST['campaign_step_state'])){
+            $state = $_POST['campaign_step_state'];  
+        }    
+
+        $em_lead_id = '';
+        if(isset($_POST['sm_lead_response'])){
+            $em_lead_id = $_POST['sm_lead_response'];  
+        }  
+
+        $lead_data = array(
+            'full_address'     =>   $address,
+            'street_name'      =>   $street_name,
+            'suburb'           =>   $suburb,
+            'postcode'         =>   $postcode,
+            'state_name'       =>   $state,
+            'power_company'    =>   $power_company,
+            'quarter_bill'     =>   $estimate_bill,
+            'extras'           =>   json_encode($extras),
+        ); 
+        $result = $wpdb->update($table_name, $lead_data, array("id" => $lead_id));   
+             
+        $postdata = array(
+            'em_lead_id'    =>      $em_lead_id,
+            'address'       =>      $address,
+            'street_name'   =>      $street_name,
+            'suburb'        =>      $suburb,
+            'postcode'      =>      $postcode,
+            'state'         =>      $state,
+            'power_company' =>      $power_company,
+            'estimate_bill' =>      $estimate_bill,
+            'action'        =>      "save_sm_quote_step",
+        ); 
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $this->api_url);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER,true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postdata)); 
+        $data = curl_exec($ch);
+        
+        $filename = '';
+        $res_data = null;
+        if(curl_errno($ch)) {
+            $everything_is_ok = false;
+            $error_msg = '[CURL]:'.curl_error($ch);
+        }else{
+            $wpdb->update($table_name, array("step2_sync" => 1), array("id" => $lead_id));
+            $res_data = (array)json_decode($data);    
+
+            if(isset($res_data['filename']))
+                $res_data['filename'] = $this->pdf_url ."/documents/solar_quotes/".$res_data['filename'];
+                
+           
+        }
+        curl_close($ch);
+
+        if($everything_is_ok) {
+            echo json_encode($res_data);
+        }else{
+            header('HTTP/1.1 500 Internal Server Booboo');
+            header('Content-Type: application/json; charset=UTF-8');  
+            echo json_encode('Error 400: Bad Request.['.$error_msg.']. Please try again.');  
+        } 
+
+        die(0);
+    }
 }
+

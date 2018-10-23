@@ -1,4 +1,4 @@
-var gmap_key = 'AIzaSyAvIqYIPuYPtHvdJoqndErZRrzUUTKZYQI'; 
+var gmap_key = 'AIzaSyAvIqYIPuYPtHvdJoqndErZRrzUUTKZYQI';
 
 function initSolarMap() {
 	//console.log('initSolarMap started');
@@ -1153,6 +1153,12 @@ function loadGMAP(fldName) {
 			});
 		})
 
+		$('a[href*="#"]').on('click', function (e) {
+			e.preventDefault();
+			$('html, body').animate({
+				scrollTop: $($(this).attr('href')).offset().top
+			}, 2000, 'linear');
+		});
 
 		$("#clr-btn").click(function () {
 			$("#signature").jSignature("clear");
@@ -1194,6 +1200,239 @@ function loadGMAP(fldName) {
 				});
 			}
 		})
+
+		$("#solar_lead_promo").validate({
+			ignore: '',
+			rules: {
+				firstname: {
+					required: true,
+				},
+				email: {
+					required: true,
+				},
+				contact: {
+					required: true,
+				},
+				postcode: {
+					required: true,
+				},
+			},
+
+			onkeyup: false,
+			submitHandler: function (form) {
+				console.log($(form).serialize() + '&action=SaveUserDetails&book_appt_id=0&prepend=promo&page_src=solar-landing&refresh_source=rd');
+				$("#solar_lead_promo_error").addClass('d-none');
+				$(".cnfm_btn").html('<i class="icon-flickr icon-is-spinning icon-fw"></i>').attr("disabled", "disabled");
+				$.ajax({
+					url: $.trim(monster_pack_ajax_script.ajaxurl),
+					type: "POST",
+					data: $(form).serialize() + '&action=SaveUserDetails&book_appt_id=0&prepend=promo&page_src=solar-promo&refresh_source=rd&source=solar-promo',
+					success: function (response) {
+						$(".promo-form").addClass('d-none');
+						$(".congrats").removeClass('d-none');
+
+						window.dataLayer = window.dataLayer || [];
+						window.dataLayer.push({
+							event: 'formSubmissionSuccess',
+							formId: 'solar_promo',
+							step: 'Step1'
+						});
+					},
+					error: function (response) {
+						console.log('Error:' + JSON.stringify(response));
+					}
+				});
+			}
+		});
+
+		$("#solar_lead_promo input").blur(function () {
+			var numItems = $('#solar_lead_promo.form-control.error').length;
+			console.log('numItems :' + numItems);
+			if (numItems == 0) {
+				$("#solar_lead_promo_error").addClass('d-none');
+			} else {
+				var message = numItems == 1 ?
+					'Found an error. Please provide the correct information.' :
+					'Found ' + numItems + ' errors.  Please provide the correct information.';
+				$("#solar_lead_promo_error span").html(message);
+			}
+
+		});
+
+		$(".mbl_tag_btn").click(function () {
+			$(".mbl_head").removeClass('show-for-small').addClass('hide-for-small').fadeOut();
+			$(".bg-animate").removeClass('hide-for-small').addClass('show-for-small').fadeIn();
+		})
+
+		$("#campaign-form").validate({
+			ignore: '',
+			rules: {
+				firstname: {
+					required: true,
+				},
+				email: {
+					required: true,
+				},
+				contact: {
+					required: true,
+				},
+				postcode: {
+					required: true,
+				},
+			},
+			onkeyup: false,
+			submitHandler: function (form) {
+				console.log($(form).serialize() + '&action=SaveUserDetails&book_appt_id=0&prepend=promo&page_src=solar-landing&refresh_source=rd');
+				$("#campaign-form-error").addClass('d-none');
+				$(".cnfm_btn").html('<i class="icon-flickr icon-is-spinning icon-fw"></i>').attr("disabled", "disabled");
+				$.ajax({
+					url: $.trim(monster_pack_ajax_script.ajaxurl),
+					type: "POST",
+					data: $(form).serialize() + '&action=SaveUserDetails&book_appt_id=0&prepend=campaign&page_src=solar-campaign&refresh_source=rd',
+					success: function (response) {
+						loadGMAP('campaign_step_address');
+
+						var date = new Date();
+						date.setTime(date.getTime() + (1 * 24 * 60 * 60 * 1000));
+						var expires = "; expires=" + date.toGMTString();
+						document.cookie = "sm_lead_response=" + data.em_lead_id +
+							expires + "; path=/";
+						document.cookie = "this_fbsm_id=" + data.lead_id +
+							expires + "; path=/";
+						document.cookie = "stepsm=" + data.step + expires +
+							"; path=/";
+						document.cookie =
+							'bill_size_htmls=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+						var cookies = get_cookies_array();
+						for (var name in cookies) {
+							if (name.indexOf("bill_size_htmls_") > -1)
+								document.cookie = name +
+								'=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+						}
+						if (data.hasOwnProperty("bill_size_html"))
+							jQuery("#campaign_step_quarter_bill").html(data.bill_size_html);
+
+						if (data.hasOwnProperty("distrib_html")) {
+							jQuery("#campaign_step_quarter_bill").closest("div").hide();
+							var distrib_html ='<div class="clearfix"></div><div class="form-group col-md-12 col-sm-12 col-xs-12">'
+								'<select class="btn-select-box required" id="cust_dis_id" name="cust_dis_id"><option value="">' +
+								'Your Electricity Distributor</option>' + data.distrib_html + '</select></div>';
+							jQuery("#campaign_step_address").closest("div").after(
+								distrib_html);
+							jQuery.each(data.bill_size_htmls, function (k, v) {
+								document.cookie = "bill_size_htmls_" +
+									k + "=" + v + expires + "; path=/";
+							});
+							document.cookie = "bill_size_htmls=" + data.bill_size_htmls +
+								expires + "; path=/";
+						}
+
+						$("#campaign-form").addClass('d-none');
+						$("#campaign-form2").removeClass('d-none');
+						$(".cnfm_btn").html('Download').removeAttr("disabled");
+
+						window.dataLayer = window.dataLayer || [];
+						window.dataLayer.push({
+							event: 'formSubmissionSuccess',
+							formId: 'solar_campaign',
+							step: 'Step1'
+						});
+					},
+					error: function (response) {
+						console.log('Error:' + JSON.stringify(response));
+					}
+				});
+			}
+		});
+
+		$("#campaign-form input").blur(function () {
+			var numItems = $('#campaign-form.form-control.error').length;
+			console.log('numItems :' + numItems);
+			if (numItems == 0) {
+				$("#campaign-form-error").addClass('d-none');
+			} else {
+				var message = numItems == 1 ?
+					'Found an error. Please provide the correct information.' :
+					'Found ' + numItems + ' errors.  Please provide the correct information.';
+				$("#campaign-form-error span").html(message);
+			}
+
+		});
+
+
+		$("#campaign-form2").validate({
+			ignore: '',
+			messages: {
+				campaign_step_quarter_bill: 'Please Select Your Electricity Bill',
+				campaign_step_retailer: 'Please Select Your Electricity Company',
+				campaign_step_address: 'Please Select Your Address',
+			},
+			submitHandler: function (form) {
+				$("#bill_btn").html('<i class="fas fa-spinner fa-spin"></i>').attr(
+					"disabled", "disabled");
+				$.ajax({
+					url: $.trim(monster_pack_ajax_script.ajaxurl),
+					type: "POST",
+					data: $(form).serialize() +
+						'&action=SMQuoteStep2&sm_lead_response=' + getCookie(
+							'sm_lead_response') + '&this_fbsm_id=' + getCookie(
+							'this_fbsm_id') + '&stepsm=' + getCookie('stepsm'),
+					success: function (response) {
+						var data = $.parseJSON(response);
+						if (data.code == '401') {
+							alert(data.message);
+						} else {
+							$("#campaign-form2").hide(); // .remove()        
+							$("#campaign-form3").fadeIn().removeClass('d-none');
+							document.cookie =
+								'sm_lead_response=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+							document.cookie =
+								'this_fbsm_id=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+							document.cookie =
+								'stepsm=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+							document.cookie =
+								'bill_size_htmls=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+							var cookies = get_cookies_array();
+							for (var name in cookies) {
+								if (name.indexOf("bill_size_htmls_") > -1)
+									document.cookie = name +
+									'=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+							}
+
+							if (data.hasOwnProperty('filename')) {
+								$(".dwnld_link").attr("href", data.filename);
+								setTimeout(function () {
+									$(".dwnld_link")[0].click();
+								}, 1000);
+							}
+
+							window.dataLayer = window.dataLayer || [];
+							window.dataLayer.push({
+								event: 'formSubmissionSuccess',
+								formId: 'sm-campaign-2',
+								step: 'Step2'
+							});
+						}
+					}
+				});
+				return false;
+			}
+		});
+
+
+		$("#campaign-form2:input").blur(function () {
+			var numItems = $('#campaign-form2.form-control.error').length;
+			console.log('numItems :' + numItems);
+			if (numItems == 0) {
+				$("#campaign-form2-error").addClass('d-none');
+			} else {
+				var message = numItems == 1 ?
+					'Found an error. Please provide the correct information.' :
+					'Found ' + numItems + ' errors.  Please provide the correct information.';
+				$("#campaign-form2-error span").html(message);
+			}
+
+		});
 
 
 	})
