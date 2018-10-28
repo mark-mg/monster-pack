@@ -56,7 +56,7 @@
                 &nbsp;
             </div>
             <div class="col large-2 medium-4 small-6 align-middle text-center">
-                <a id="dwnld1" href="#" class="button lp-btn review-order-btn align-middle">
+                <a id="dwnld1" href="javascript:openPDFlink();" class="button lp-btn review-order-btn align-middle">
                     <span>Review Order</span>
                 </a> 
             </div>
@@ -124,10 +124,8 @@
                 <div class="row row-collapse">
                     <div class="col medium-12 small-12 large-12">
                         <div class="col-inner align-middle text-center">
-                            <a id="dwnld2" href="#">
-                                <button id="lp2-btn" type="button" class="button secondary lp2 lp-btn review-order-btn">
-                                    <span>Review Order</span>
-                                </button>
+                            <a id="dwnld2" href="javascript:openPDFlink();" class="button secondary lp2 lp-btn review-order-btn"> 
+                                <span>Review Order</span> 
                             </a>
                         </div>
                     </div>
@@ -225,6 +223,19 @@
 
 <script>
     //console.log('#signoff_check submit'); 
+
+     var pdf_link = "";
+
+    function openPDFlink(){
+        var win = window.open(pdf_link, '_blank');
+        if (win) {
+            //Browser has allowed it to be opened
+            win.focus();
+        } else {
+            //Browser has blocked it
+            alert('Please allow popups for this website');
+        }
+    }  
      
 	function checkUserSignOff(form) {
         //console.log('Call signoff_check form php: ' + JSON.stringify('leadorder_form_idID=' + jQuery( "#leadIDCheck" ).val() + '&subs=check&action=CheckUserSignOff'));
@@ -249,8 +260,9 @@
                         //console . log('#review'); 
                         jQuery('#review').removeClass('d-none'); 
                     }
-                    jQuery('#dwnld1').attr('href',response.link);
-                    jQuery('#dwnld2').attr('href',response.link);
+                    pdf_link = response.link;
+                    //jQuery('#dwnld1').attr('href',response.link);
+                    //jQuery('#dwnld2').attr('href',response.link);
                 }else{
                     jQuery('#unauthorized').removeClass('d-none'); 
                 } 

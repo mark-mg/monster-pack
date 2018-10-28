@@ -1,5 +1,22 @@
 var gmap_key = 'AIzaSyAvIqYIPuYPtHvdJoqndErZRrzUUTKZYQI';
 
+function get_cookies_array() {
+
+	var cookies = {};
+
+	if (document.cookie && document.cookie != '') {
+		var split = document.cookie.split(';');
+		for (var i = 0; i < split.length; i++) {
+			var name_value = split[i].split("=");
+			name_value[0] = name_value[0].replace(/^ /, '');
+			cookies[decodeURIComponent(name_value[0])] = decodeURIComponent(name_value[1]);
+		}
+	}
+
+	return cookies;
+
+}
+
 function initSolarMap() {
 	//console.log('initSolarMap started');
 	var mapOptions = {
@@ -487,13 +504,15 @@ function loadGMAP(fldName) {
 			},
 			onkeyup: false,
 			submitHandler: function (form) {
-				var str = window.location.pathname;
-				var res = str.split("/").join("");
+				var str = window.location.href;
+				var href_url = str.substr(str.indexOf(window.location.pathname), str.length); 
+
 				$(".cnfm_btn").html('<i class="icon-flickr icon-is-spinning icon-fw"></i>').attr("disabled", "disabled");
 				$.ajax({
 					url: $.trim(monster_pack_ajax_script.ajaxurl),
 					type: "POST",
-					data: $(form).serialize() + '&action=SaveUserDetails&prepend=cta&page_src=' + res,
+					data: $(form).serialize() + '&href_url=' + href_url + '&page_src=' + str +
+					'&action=SaveUserDetails&prepend=cta',
 					success: function (response) {
 						clear_form("CTA_STEP");
 						var tmp_booking_id = $("#book_appt_id").val();
@@ -675,13 +694,16 @@ function loadGMAP(fldName) {
 			onkeyup: false,
 			submitHandler: function (form) {
 				$("#hero_form_error").addClass('d-none');
-				var str = window.location.pathname;
-				var res = str.split("/").join("");
+
+				var str = window.location.href;
+				var href_url = str.substr(str.indexOf(window.location.pathname), str.length); 
+
 				$(".cnfm_btn").html('<i class="icon-flickr icon-is-spinning icon-fw"></i>').attr("disabled", "disabled");
 				$.ajax({
 					url: $.trim(monster_pack_ajax_script.ajaxurl),
 					type: "POST",
-					data: $(form).serialize() + '&action=SaveUserDetails&book_appt_id=0&prepend=hero&page_src=' + res,
+					data: $(form).serialize() + '&href_url=' + href_url + '&page_src=' + str +
+					 '&action=SaveUserDetails&book_appt_id=0&prepend=hero',
 					success: function (response) {
 						clear_form("HERO_STEP");
 						loadGMAP('hero_step_address');
@@ -986,13 +1008,16 @@ function loadGMAP(fldName) {
 			},
 			onkeyup: false,
 			submitHandler: function (form) {
-				var str = window.location.pathname;
-				var res = str.split("/").join("");
+
+				var str = window.location.href;
+				var href_url = str.substr(str.indexOf(window.location.pathname), str.length); 
+
 				$(".cnfm_btn").html('<i class="icon-flickr icon-is-spinning icon-fw"></i>').attr("disabled", "disabled");
 				$.ajax({
 					url: $.trim(monster_pack_ajax_script.ajaxurl),
 					type: "POST",
-					data: $(form).serialize() + '&action=SaveUserDetails&prepend=prd&page_src=' + res,
+					data: $(form).serialize() + '&href_url=' + href_url + '&page_src=' + str +
+					'&action=SaveUserDetails&prepend=prd',
 					success: function (response) {
 
 						clear_form("PRD_STEP");
@@ -1220,13 +1245,17 @@ function loadGMAP(fldName) {
 
 			onkeyup: false,
 			submitHandler: function (form) {
-				console.log($(form).serialize() + '&action=SaveUserDetails&book_appt_id=0&prepend=promo&page_src=solar-landing&refresh_source=rd');
+
+				var str = window.location.href;
+				var href_url = str.substr(str.indexOf(window.location.pathname), str.length); 
+
 				$("#solar_lead_promo_error").addClass('d-none');
 				$(".cnfm_btn").html('<i class="icon-flickr icon-is-spinning icon-fw"></i>').attr("disabled", "disabled");
 				$.ajax({
 					url: $.trim(monster_pack_ajax_script.ajaxurl),
 					type: "POST",
-					data: $(form).serialize() + '&action=SaveUserDetails&book_appt_id=0&prepend=promo&page_src=solar-promo&refresh_source=rd&source=solar-promo',
+					data: $(form).serialize() + '&href_url=' + href_url + '&page_src=' + str +
+					'&action=SaveUserDetails&book_appt_id=0&prepend=promo&refresh_source=rd',
 					success: function (response) {
 						$(".promo-form").addClass('d-none');
 						$(".congrats").removeClass('d-none');
@@ -1281,25 +1310,29 @@ function loadGMAP(fldName) {
 				},
 			},
 			onkeyup: false,
-			submitHandler: function (form) {
-				console.log($(form).serialize() + '&action=SaveUserDetails&book_appt_id=0&prepend=promo&page_src=solar-landing&refresh_source=rd');
+			submitHandler: function (form) {	
+
+				var str = window.location.href;
+				var href_url = str.substr(str.indexOf(window.location.pathname), str.length); 
+				 		
 				$("#campaign-form-error").addClass('d-none');
 				$(".cnfm_btn").html('<i class="icon-flickr icon-is-spinning icon-fw"></i>').attr("disabled", "disabled");
 				$.ajax({
 					url: $.trim(monster_pack_ajax_script.ajaxurl),
 					type: "POST",
-					data: $(form).serialize() + '&action=SaveUserDetails&book_appt_id=0&prepend=campaign&page_src=solar-campaign&refresh_source=rd',
+					data: $(form).serialize() + '&href_url=' + href_url + '&page_src=' + str +
+					'&action=SaveUserDetails&book_appt_id=0&prepend=campaign&codezones=1',
 					success: function (response) {
 						loadGMAP('campaign_step_address');
 
 						var date = new Date();
 						date.setTime(date.getTime() + (1 * 24 * 60 * 60 * 1000));
 						var expires = "; expires=" + date.toGMTString();
-						document.cookie = "sm_lead_response=" + data.em_lead_id +
+						document.cookie = "sm_lead_response=" + response.em_lead_id +
 							expires + "; path=/";
-						document.cookie = "this_fbsm_id=" + data.lead_id +
+						document.cookie = "this_fbsm_id=" + response.lead_id +
 							expires + "; path=/";
-						document.cookie = "stepsm=" + data.step + expires +
+						document.cookie = "stepsm=" + response.step + expires +
 							"; path=/";
 						document.cookie =
 							'bill_size_htmls=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
@@ -1309,21 +1342,21 @@ function loadGMAP(fldName) {
 								document.cookie = name +
 								'=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 						}
-						if (data.hasOwnProperty("bill_size_html"))
-							jQuery("#campaign_step_quarter_bill").html(data.bill_size_html);
+						if (response.hasOwnProperty("bill_size_html"))
+							$("#campaign_step_quarter_bill").html(response.bill_size_html);
 
-						if (data.hasOwnProperty("distrib_html")) {
-							jQuery("#campaign_step_quarter_bill").closest("div").hide();
+						if (response.hasOwnProperty("distrib_html")) {
+							$("#campaign_step_quarter_bill").closest("div").hide();
 							var distrib_html ='<div class="clearfix"></div><div class="form-group col-md-12 col-sm-12 col-xs-12">'
 								'<select class="btn-select-box required" id="cust_dis_id" name="cust_dis_id"><option value="">' +
-								'Your Electricity Distributor</option>' + data.distrib_html + '</select></div>';
-							jQuery("#campaign_step_address").closest("div").after(
+								'Your Electricity Distributor</option>' + response.distrib_html + '</select></div>';
+							$("#campaign_step_address").closest("div").after(
 								distrib_html);
-							jQuery.each(data.bill_size_htmls, function (k, v) {
+							$.each(response.bill_size_htmls, function (k, v) {
 								document.cookie = "bill_size_htmls_" +
 									k + "=" + v + expires + "; path=/";
 							});
-							document.cookie = "bill_size_htmls=" + data.bill_size_htmls +
+							document.cookie = "bill_size_htmls=" + response.bill_size_htmls +
 								expires + "; path=/";
 						}
 
@@ -1334,7 +1367,7 @@ function loadGMAP(fldName) {
 						window.dataLayer = window.dataLayer || [];
 						window.dataLayer.push({
 							event: 'formSubmissionSuccess',
-							formId: 'solar_campaign',
+							formId: 'solar_ad_campaign',
 							step: 'Step1'
 						});
 					},
@@ -1367,9 +1400,8 @@ function loadGMAP(fldName) {
 				campaign_step_retailer: 'Please Select Your Electricity Company',
 				campaign_step_address: 'Please Select Your Address',
 			},
-			submitHandler: function (form) {
-				$("#bill_btn").html('<i class="fas fa-spinner fa-spin"></i>').attr(
-					"disabled", "disabled");
+			submitHandler: function (form) { 
+				$("#bill_btn").html('<i class="icon-flickr icon-is-spinning icon-fw"></i>').attr("disabled", "disabled");
 				$.ajax({
 					url: $.trim(monster_pack_ajax_script.ajaxurl),
 					type: "POST",

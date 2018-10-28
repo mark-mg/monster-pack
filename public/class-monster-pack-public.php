@@ -75,7 +75,7 @@ class Monster_Pack_Public
         if($_SERVER["HTTP_HOST"] == 'localhost'){
 
            $this->service_url = 'http://localhost/electricitymonster/';  
-           $this->api_url = "http://localhost/electricitymonster/services/webservices.php";  
+           $this->api_url = "http://localhost/electricitymonster/services/webservices.php";    
            $this->pdf_url = "http://localhost/electricitymonster/documents/order_forms/";   
 
         }else{
@@ -90,8 +90,7 @@ class Monster_Pack_Public
 
             //$this->pdf_url = "https://staging.electricitymonster.com.au/documents/order_forms/"; //----> STG
             $this->pdf_url = "https://mga.electricitymonster.com.au/documents/order_forms/";   //----> PRD
-        }  
-
+        }   
          
 
         add_shortcode('cta_form',       array($this, 'cta_form'));
@@ -131,6 +130,9 @@ class Monster_Pack_Public
         add_action("wp_ajax_RecordClicks", array($this, "RecordClicks"));
         add_action("wp_ajax_nopriv_RecordClicks", array($this, "RecordClicks")); 
 
+        add_action("wp_ajax_SMQuoteStep", array($this, "SMQuoteStep"));
+        add_action("wp_ajax_nopriv_SMQuoteStep", array($this, "SMQuoteStep")); 
+
         add_action("wp_ajax_SMQuoteStep2", array($this,"SMQuoteStep2"));
         add_action("wp_ajax_nopriv_SMQuoteStep2", array($this,"SMQuoteStep2"));
     }
@@ -143,7 +145,7 @@ class Monster_Pack_Public
 	{
         add_rewrite_rule('order-signoff/([a-zA-Z0-9-=]+)', 'index.php?pagename=order-signoff&leadID=$matches[1]', 'top');
         add_rewrite_rule('solar-promo/([a-zA-Z0-9-=%]+)', 'index.php?pagename=solar-promo&leadID=$matches[1]', 'top');
-        add_rewrite_rule('solar-campaign/([a-zA-Z0-9-=]+)', 'index.php?pagename=solar-campaign&leadID=$matches[1]', 'top');
+        add_rewrite_rule('solar-ad-landing/([a-zA-Z0-9-=%+]+)', 'index.php?pagename=solar-ad-landing&leadID=$matches[1]', 'top');
 	}
 	
 
@@ -165,7 +167,7 @@ class Monster_Pack_Public
 
     public function load_resources()
     {
-        /*
+        
         wp_register_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/monster-pack-public.css', array(), $this->version, 'all');
         wp_enqueue_style($this->plugin_name);
 
@@ -180,14 +182,15 @@ class Monster_Pack_Public
  
         wp_register_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/monster-pack-public.js', array('jquery'), $this->version, true);
         wp_enqueue_script($this->plugin_name);  
-        */
        
+        /*
         wp_register_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/mp-plugin-styles.min.css', array(), $this->version, 'all');
         wp_enqueue_style($this->plugin_name);
 
         wp_register_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/mp-plugin-scripts.min.js', array('jquery'), $this->version, true);
         wp_enqueue_script($this->plugin_name); 
-        
+        */
+
         if(is_page('order-signoff')){
             wp_register_script('jSignature', plugin_dir_url(__FILE__) . 'js/jSignature.min.noconflict.js', array('jquery'), $this->version, true);
             wp_enqueue_script('jSignature');
@@ -624,6 +627,11 @@ class Monster_Pack_Public
             $prepend = trim($_POST['prepend']);
         }
 
+        $codezones = "";
+        if (isset($_POST['codezones']) && $_POST['codezones'] != "") {
+            $codezones = trim($_POST['codezones']);
+        } 
+
         $refresh_source = "";
         if (isset($_POST['refresh_source']) && $_POST['refresh_source'] != "") {
             $refresh_source = trim($_POST['refresh_source']);
@@ -668,7 +676,10 @@ class Monster_Pack_Public
         $postcode_details = $wpdb->get_row('SELECT * FROM sm_postcodes WHERE postcode = ' . $postcode, ARRAY_A);
         $state_name = ($postcode_details) ? $postcode_details['state'] : "";
 
-        $source = (isset($_POST['source']) ? $_POST['source'] : 'homepage');
+        $href_url = "";
+        if (isset($_POST['href_url']))  $href_url = $_POST['href_url'];  
+
+        //$source = (isset($_POST['source']) ? $_POST['source'] : 'homepage');
 
         $page_src = "SM-";
         if (isset($_POST['page_src'])) {
@@ -762,28 +773,29 @@ class Monster_Pack_Public
 
         if ($test != 0) {    
             $postdata = array(
-                'action'        =>  'save_em_lead',  
-                'lead_from'     =>  'solarmonster',
-                'fname'         =>  $fname,
-                'email_id'      =>  $email_id,
-                'phone_num'     =>  $phone_num,
-                'postcode'      =>  $postcode,
+                'action'            =>      'save_em_lead',  
+                'lead_from'         =>      'solarmonster',
+                'sm_lead_no'        =>      $test,              //--> SM DB ID
+                'fname'             =>      $fname,
+                'lname'             =>      $lname, 
+                'email_id'          =>      $email_id,
+                'phone_num'         =>      $phone_num,
+                'postcode'          =>      $postcode,
 
-                'refresh_source'=>  $refresh_source,
-                'redeem_code'   =>  $promo,
-                'wf_email_name' =>  $wf_email,
+                'getpostcodezones'  =>      $codezones,
+                'refresh_source'  =>        $refresh_source,
+                'redeem_code'       =>      $promo,
+                'wf_email_name'     =>      $wf_email, 
+               
+                'lead_source'       =>      $prepend,    
+                'page_type'         =>      $page_src,
+                'source'            =>      $href_url, 
 
-                'sm_lead_no'    =>  $test, 
-                'lead_source'   =>  $prepend, 
-
-                'service_req'   =>  $service_req, 
-                'lname'         =>  $lname, 
-                'page_type'     =>  $page_src,
-                'source'        =>  $source, 
-                'advertising'   =>  $advertising,  
-                'appt_date'     =>  $booking_date,
-                'appt_time'     =>  $booking_time, 
-                'estimate_bill' =>  strtolower($quarter_bill),
+                'service_req'       =>      $service_req, 
+                'advertising'       =>      $advertising,  
+                'appt_date'         =>      $booking_date,
+                'appt_time'         =>      $booking_time, 
+                'estimate_bill'     =>      strtolower($quarter_bill),
             );  
 
             $ch = curl_init();
@@ -1536,7 +1548,8 @@ class Monster_Pack_Public
         }   
         die(0); 
     } 
-    
+     
+
     public function SMQuoteStep2() {
         global $wpdb, $site_url, $state_list, $api_url;
         $lead_Details = null;
@@ -1553,12 +1566,7 @@ class Monster_Pack_Public
         } else {
             $lead_Details = $wpdb->get_row( "SELECT * FROM $table_name WHERE id = $lead_id" ); 
         }   
-        
-        $extras = array();
-        if($lead_Details['extras'] != "") {
-            $extras = (array)json_decode($lead_Details['extras']);    
-        }  
-
+         
         $estimate_bill = '';
         if(isset($_POST['campaign_step_quarter_bill'])){
             $extras['estimate_bill'] = $_POST['campaign_step_quarter_bill'];
@@ -1624,6 +1632,9 @@ class Monster_Pack_Public
             'action'        =>      "save_sm_quote_step",
         ); 
         
+        $filename = '';
+        $res_data = null; 
+
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $this->api_url);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
@@ -1632,22 +1643,36 @@ class Monster_Pack_Public
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postdata)); 
         $data = curl_exec($ch);
         
-        $filename = '';
-        $res_data = null;
+       
         if(curl_errno($ch)) {
             $everything_is_ok = false;
             $error_msg = '[CURL]:'.curl_error($ch);
         }else{
             $wpdb->update($table_name, array("step2_sync" => 1), array("id" => $lead_id));
-            $res_data = (array)json_decode($data);    
+            $data = (array)json_decode($data);    
 
             if(isset($res_data['filename']))
-                $res_data['filename'] = $this->pdf_url ."/documents/solar_quotes/".$res_data['filename'];
+                $filename =  $this->pdf_url ."/documents/solar_quotes/". $data['filename'];
                 
            
         }
         curl_close($ch);
-
+         
+        
+        $res_data = array(
+            'em_lead_id' => $em_lead_id,
+            'address' => $address,
+            'street_name' => $street_name,
+            'suburb' => $suburb,
+            'postcode' => $postcode,
+            'state' => $state,
+            'power_company' => $power_company,
+            'estimate_bill' => $estimate_bill,
+            'action' => "save_sm_quote_step",
+            'filename' => $filename,
+            'error_msg' => $error_msg,
+        );  
+        
         if($everything_is_ok) {
             echo json_encode($res_data);
         }else{
@@ -1655,7 +1680,7 @@ class Monster_Pack_Public
             header('Content-Type: application/json; charset=UTF-8');  
             echo json_encode('Error 400: Bad Request.['.$error_msg.']. Please try again.');  
         } 
-
+        
         die(0);
     }
 }
